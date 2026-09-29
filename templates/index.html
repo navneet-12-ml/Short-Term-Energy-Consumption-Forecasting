@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Energy Consumption Forecast
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="container">
+
+        <!-- HEADER -->
+
+        <header>
+
+            <div>
+
+                <h1>
+                    Energy Consumption Forecast
+                </h1>
+
+                <p>
+                    Machine Learning based
+                    10-minute energy forecasting
+                </p>
+
+            </div>
+
+            <div class="status">
+
+                <span class="dot"></span>
+
+                API Online
+
+            </div>
+
+        </header>
+
+
+        <!-- KPI CARDS -->
+
+        <section class="cards">
+
+            <div class="card">
+
+                <p>Current Time</p>
+
+                <h2 id="current-time">
+                    --
+                </h2>
+
+            </div>
+
+
+            <div class="card">
+
+                <p>Forecast Time</p>
+
+                <h2 id="forecast-time">
+                    --
+                </h2>
+
+            </div>
+
+
+            <div class="card highlight">
+
+                <p>
+                    Next 10-Minute Forecast
+                </p>
+
+                <h2 id="forecast-energy">
+                    -- Wh
+                </h2>
+
+            </div>
+
+
+            <div class="card">
+
+                <p>Forecast Horizon</p>
+
+                <h2>
+                    10 min
+                </h2>
+
+            </div>
+
+        </section>
+
+
+        <!-- CHART -->
+
+        <section class="panel">
+
+            <div class="panel-header">
+
+                <h2>
+                    Recent Energy Consumption
+                </h2>
+
+                <button
+                    onclick="loadDashboard()"
+                >
+                    Refresh
+                </button>
+
+            </div>
+
+            <div class="chart-container">
+
+                <canvas
+                    id="energyChart"
+                ></canvas>
+
+            </div>
+
+        </section>
+
+
+        <!-- FORECAST DETAILS -->
+
+        <section class="details">
+
+            <div class="panel">
+
+                <h2>
+                    Forecast Details
+                </h2>
+
+                <div class="detail-row">
+
+                    <span>
+                        Model
+                    </span>
+
+                    <strong>
+                        Gradient Boosting
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Forecast Horizon
+                    </span>
+
+                    <strong>
+                        10 minutes
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Target
+                    </span>
+
+                    <strong>
+                        Appliances Energy (Wh)
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Features
+                    </span>
+
+                    <strong>
+                        49
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="panel">
+
+                <h2>
+                    System Information
+                </h2>
+
+                <div class="detail-row">
+
+                    <span>
+                        Data Source
+                    </span>
+
+                    <strong>
+                        Energy Consumption Dataset
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Sampling Interval
+                    </span>
+
+                    <strong>
+                        10 minutes
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Prediction Type
+                    </span>
+
+                    <strong>
+                        Regression
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Status
+                    </span>
+
+                    <strong class="online">
+                        Operational
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <!-- Chart.js -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <script>
+
+        let energyChart = null;
+
+
+        async function loadDashboard() {
+
+            try {
+
+                // =====================================
+                // Get forecast
+                // =====================================
+
+                const predictionResponse =
+                    await fetch("/predict");
+
+                const prediction =
+                    await predictionResponse.json();
+
+
+                document.getElementById(
+                    "current-time"
+                ).textContent =
+                    prediction.current_time;
+
+
+                document.getElementById(
+                    "forecast-time"
+                ).textContent =
+                    prediction.forecast_time;
+
+
+                document.getElementById(
+                    "forecast-energy"
+                ).textContent =
+                    prediction.predicted_energy_wh
+                    + " Wh";
+
+
+                // =====================================
+                // Get historical data
+                // =====================================
+
+                const historyResponse =
+                    await fetch("/history");
+
+                const history =
+                    await historyResponse.json();
+
+
+                const labels =
+                    history.map(
+                        item => item.time
+                    );
+
+
+                const values =
+                    history.map(
+                        item => item.energy
+                    );
+
+
+                // =====================================
+                // Create chart
+                // =====================================
+
+                const ctx =
+                    document
+                    .getElementById(
+                        "energyChart"
+                    )
+                    .getContext("2d");
+
+
+                if (energyChart) {
+
+                    energyChart.destroy();
+
+                }
+
+
+                energyChart =
+                    new Chart(
+                        ctx,
+                        {
+
+                            type: "line",
+
+                            data: {
+
+                                labels: labels,
+
+                                datasets: [
+
+                                    {
+
+                                        label:
+                                            "Energy Consumption (Wh)",
+
+                                        data: values,
+
+                                        tension: 0.3,
+
+                                        fill: false
+
+                                    }
+
+                                ]
+
+                            },
+
+                            options: {
+
+                                responsive: true,
+
+                                maintainAspectRatio: false,
+
+                                plugins: {
+
+                                    legend: {
+
+                                        display: true
+
+                                    }
+
+                                },
+
+                                scales: {
+
+                                    y: {
+
+                                        beginAtZero: true,
+
+                                        title: {
+
+                                            display: true,
+
+                                            text:
+                                                "Energy (Wh)"
+
+                                        }
+
+                                    },
+
+                                    x: {
+
+                                        title: {
+
+                                            display: true,
+
+                                            text:
+                                                "Time"
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+
+                        }
+
+                    );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Dashboard error:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        // Load dashboard automatically
+
+        loadDashboard();
+
+    </script>
+
+</body>
+
+</html>
